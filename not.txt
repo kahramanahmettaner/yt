@@ -1,0 +1,185 @@
+/////////////////////////
+WebSocket_Client.cs
+/////////////////////////
+using Newtonsoft.Json;
+using WebSocketSharp;
+
+namespace WebApplication.WEP.API
+{
+    //class Vector
+    //{
+    //    public double x, y;
+    //}
+    public class Websocket_Client
+    {
+
+        public void client_run(string message)
+        {
+            // Create a scoped instance of a WS client that will be properly disposed
+            //using (WebSocket ws = new WebSocket("ws://simple-websocket-server-echo.glitch.me/"))
+            using (WebSocket ws = new WebSocket("ws://127.0.0.1:7890/EchoAll"))
+            {
+                ws.OnMessage += Ws_OnMessage;
+                ws.Connect();
+
+                ws.Send(message);
+
+                //while (true)
+                //{
+                //    ws.Send("Hello from PCamp!");
+                //    Console.ReadKey();
+                //}
+            }
+        }
+
+        private void Ws_OnMessage(object sender, MessageEventArgs e)
+        {
+            Console.WriteLine("Received from the server: " + e.Data);
+
+            //try
+            //{
+            //    Vector pos = JsonConvert.DeserializeObject<Vector>(e.Data);
+            //    //Console.WriteLine("Created a vector: " + pos.x + "," + pos.y);
+            //    DrawDot(pos.x, pos.y, 50, 15, 1);
+            //}
+            //catch (Exception ex)
+            //{
+            //    //Console.WriteLine(ex);
+            //    Console.WriteLine("I don't know what to do with \"" + e.Data + "\"");
+            //}
+
+        }
+
+        //public void DrawDot(double xpos, double ypos, int width, int height, int borderWidth)
+        //{
+        //    // Convert from normalized coordinates to "pixel" coordinates
+        //    int x = (int)Math.Round(xpos * width);
+        //    int y = (int)Math.Round(ypos * height);
+
+        //    for (int j = 0; j < height; j++)
+        //    {
+        //        for (int i = 0; i < width; i++)
+        //        {
+        //            if (i == x && j == y)
+        //            {
+        //                Console.Write("O");
+        //            }
+        //            else if (j < borderWidth || j > height - 1 - borderWidth
+        //                || i < borderWidth || i > width - 1 - borderWidth)
+        //            {
+        //                Console.Write('#');
+        //            }
+        //            else
+        //            {
+        //                Console.Write(' ');
+        //            }
+        //        }
+        //        Console.WriteLine();
+        //    }
+        //    Console.WriteLine();
+        //}
+
+
+    }
+}
+
+
+
+/////////////////////
+WebApi NewRecord
+/////////////////////
+        [HttpPost]
+        public IActionResult Post([FromBody] MyDataModel data)
+        {
+            // POST isteği alındığında çalışacak kodları buraya yazabilirsiniz
+            // Örneğin, veriyi işleme veya veritabanına kaydetme
+            string a = data.Key1;
+            string b = data.Key2;
+
+            Console.WriteLine("\n************Console******************* " + a + b);
+            Debug.WriteLine("\n**************Debug***************** " + a + b);
+
+            Websocket_Client c = new Websocket_Client();
+            c.client_run(a + ";" + b);
+
+            // Başarılı yanıt döndürme
+            return Ok("POST isteği başarıyla işlendi");
+        }
+
+////////////////////
+OPCUA Server Constructor
+////////////////////
+WebSocket_Server socket;
+
+Constructur(){
+
+            socket = new WebSocket_Server();
+            socket.Start();
+}
+//////////////////////
+OPCUA Server Stop
+//////////////////////
+            socket.Stop();
+
+
+////////////////////
+WebSocket_Server.cs
+////////////////////
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using WebSocketSharp.Server;
+using WebSocketSharp;
+
+namespace csharp_server
+{
+    public class WebSocket_Server
+    {
+        WebSocketServer wssv;
+
+        public WebSocket_Server()
+        {
+            this.wssv = new WebSocketServer("ws://127.0.0.1:7890");
+        }
+
+        public void Start()
+        {   
+            wssv.AddWebSocketService<Echo>("/Echo");
+            wssv.AddWebSocketService<EchoAll>("/EchoAll");
+
+            wssv.Start();
+        }
+        public void Stop()
+        {
+            wssv.Stop();
+        }
+    }
+
+    public class Echo : WebSocketBehavior
+    {
+        protected override void OnMessage(MessageEventArgs e)
+        {
+            Console.WriteLine("Received message from Echo client: " + e.Data);
+	    string data1 = e.Data.Split(";")[0];
+	    string data2 = e.Data.Split(";")[1];
+            DataStorage.RefreshDatas(data1, data2); 
+            Send(e.Data);
+        }
+    }
+
+    public class EchoAll : WebSocketBehavior
+    {
+        protected override void OnMessage(MessageEventArgs e)
+        {
+            Console.WriteLine("Received message from EchoAll client: " + e.Data);
+            string data1 = e.Data.Split(";")[0];
+	    string data2 = e.Data.Split(";")[1];
+            DataStorage.RefreshDatas(data1, data2);
+            Sessions.Broadcast(e.Data);
+        }
+    }
+}
+
+
